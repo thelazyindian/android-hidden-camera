@@ -21,6 +21,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.os.Environment;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -37,6 +39,11 @@ import com.androidhiddencamera.config.CameraImageFormat;
 import com.androidhiddencamera.config.CameraResolution;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Created by Keval on 11-Nov-16.
@@ -46,6 +53,8 @@ import java.io.File;
 
 public class DemoCamService extends HiddenCameraService {
 
+    private String TAG = DemoCamService.class.getSimpleName();
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -54,7 +63,8 @@ public class DemoCamService extends HiddenCameraService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
 
             if (HiddenCameraUtils.canOverDrawOtherApps(this)) {
                 CameraConfig cameraConfig = new CameraConfig()
@@ -78,8 +88,9 @@ public class DemoCamService extends HiddenCameraService {
                 HiddenCameraUtils.openDrawOverPermissionSetting(this);
             }
         } else {
-            //TODO Ask your parent activity for providing runtime permission
-            Toast.makeText(this, "Camera permission not available", Toast.LENGTH_SHORT).show();
+            //Ask your parent activity for providing runtime permission
+            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 101);
+            //Toast.makeText(this, "Appropriate permissions not available", Toast.LENGTH_SHORT).show();
         }
         return START_NOT_STICKY;
     }
@@ -90,7 +101,10 @@ public class DemoCamService extends HiddenCameraService {
         options.inPreferredConfig = Bitmap.Config.RGB_565;
         Bitmap bitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath(), options);
         //Do something with the bitmap
-
+        Matrix matrix = new Matrix();
+        matrix.postRotate(270);
+        Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap , 0, 0, bitmap.getWidth(), bitmap .getHeight(), matrix, true);
+        storeImage(rotatedBitmap);
         Log.d("Image capture", imageFile.length() + "");
         stopSelf();
     }
@@ -124,4 +138,46 @@ public class DemoCamService extends HiddenCameraService {
 
         stopSelf();
     }
+
+    /** Create a File for saving an image or video */
+    private  File getOutputMediaFile(){
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
+                + "/Pictures/"
+                + getApplicationContext().getPackageName());
+
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+        // Create the storage directory if it does not exist
+        if (! mediaStorageDir.exists()){
+            if (! mediaStorageDir.mkdirs()){
+                return null;
+            }
+        }
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm").format(new Date());
+        File mediaFile;
+            String mImageName="GI_"+ timeStamp +".jpg";
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
+        return mediaFile;
+    }
+
+    private void storeImage(Bitmap image) {
+        File pictureFile = getOutputMediaFile();
+        if (pictureFile == null) {
+            Log.d(TAG,
+                    "Error creating media file, check storage permissions: ");// e.getMessage());
+            return;
+        }
+        try {
+            FileOutputStream fos = new FileOutputStream(pictureFile);
+            image.compress(Bitmap.CompressFormat.PNG, 90, fos);
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Log.d(TAG, "File not found: " + e.getMessage());
+        } catch (IOException e) {
+            Log.d(TAG, "Error accessing file: " + e.getMessage());
+        }
+    }
+
 }
