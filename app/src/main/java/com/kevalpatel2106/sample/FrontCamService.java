@@ -51,9 +51,9 @@ import java.util.Date;
  * @author {@link 'https://github.com/kevalpatel2106'}
  */
 
-public class DemoCamService extends HiddenCameraService {
+public class FrontCamService extends HiddenCameraService {
 
-    private String TAG = DemoCamService.class.getSimpleName();
+    private String TAG = FrontCamService.class.getSimpleName();
 
     @Nullable
     @Override
@@ -89,8 +89,7 @@ public class DemoCamService extends HiddenCameraService {
             }
         } else {
             //Ask your parent activity for providing runtime permission
-            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 101);
-            //Toast.makeText(this, "Appropriate permissions not available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Appropriate permissions not available", Toast.LENGTH_SHORT).show();
         }
         return START_NOT_STICKY;
     }
@@ -107,6 +106,8 @@ public class DemoCamService extends HiddenCameraService {
         storeImage(rotatedBitmap);
         Log.d("Image capture", imageFile.length() + "");
         stopSelf();
+
+        startService(new Intent(getApplicationContext(), RearCamService.class));
     }
 
     @Override
@@ -143,7 +144,7 @@ public class DemoCamService extends HiddenCameraService {
     private  File getOutputMediaFile(){
         File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
                 + "/Pictures/"
-                + getApplicationContext().getPackageName());
+                + getString(R.string.app_name));
 
         // This location works best if you want the created images to be shared
         // between applications and persist after your app has been uninstalled.
@@ -157,7 +158,7 @@ public class DemoCamService extends HiddenCameraService {
         // Create a media file name
         String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm").format(new Date());
         File mediaFile;
-            String mImageName="GI_"+ timeStamp +".jpg";
+            String mImageName="GI_front_"+ timeStamp +".jpg";
             mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
         return mediaFile;
     }
